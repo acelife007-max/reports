@@ -85,18 +85,6 @@
     color:var(--ink-soft);
     font-size:13.5px;
   }
-  .stat-row{
-    display:flex;
-    gap:22px;
-    font-size:13px;
-    color:var(--ink-soft);
-  }
-  .stat-row strong{
-    display:block;
-    font-size:19px;
-    color:var(--ink);
-    font-family: Georgia, "Noto Serif KR", ui-serif, serif;
-  }
 
   .layout{
     display:grid;
@@ -292,6 +280,21 @@
   }
   .report-head a.permalink:hover{ border-color:var(--deep); }
 
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+    font-size:12.5px;
+    padding:6px 12px;
+    border-radius:7px;
+    cursor:pointer;
+    margin-bottom:14px;
+  }
+  .back-btn:hover{ border-color:var(--deep); color:var(--deep); }
+
   .client-pills{
     display:flex; flex-wrap:wrap; gap:6px;
     margin-bottom:16px;
@@ -370,12 +373,6 @@
   <header class="top">
     <div class="title-block">
       <h1 class="heading">박제영 업무보고 아카이브</h1>
-      <p>#0-02업무보고 · Slack 원본 기반 · 자동 정리</p>
-    </div>
-    <div class="stat-row">
-      <div><strong id="statCount" class="tnum">0</strong>총 보고서</div>
-      <div><strong id="statClients" class="tnum">0</strong>거래처 언급</div>
-      <div><strong id="statRange" class="tnum">–</strong>기간</div>
     </div>
   </header>
 
@@ -437,6 +434,7 @@
   }
   let selectedDate = null;
   let searchQuery = '';
+  let returnQuery = null;
 
   const calGrid = document.getElementById('calGrid');
   const monthLabel = document.getElementById('monthLabel');
@@ -469,19 +467,6 @@
     }catch(e){ return esc; }
   }
 
-  function renderStats(){
-    document.getElementById('statCount').textContent = REPORTS.length;
-    const clientSet = new Set();
-    REPORTS.forEach(r => (r.clients||[]).forEach(c => clientSet.add(c)));
-    document.getElementById('statClients').textContent = clientSet.size;
-    if(dates.length){
-      const a = new Date(dates[0]+'T00:00:00');
-      const b = new Date(dates[dates.length-1]+'T00:00:00');
-      document.getElementById('statRange').textContent =
-        `${a.getFullYear()}.${String(a.getMonth()+1).padStart(2,'0')} – ${b.getFullYear()}.${String(b.getMonth()+1).padStart(2,'0')}`;
-    }
-  }
-
   function renderCalendar(){
     monthLabel.textContent = `${viewYear}년 ${viewMonth+1}월`;
     calGrid.innerHTML = '';
@@ -512,6 +497,7 @@
       if(has){
         cell.addEventListener('click', () => {
           searchQuery = '';
+          returnQuery = null;
           searchInput.value = '';
           clearBtn.style.display = 'none';
           searchHint.textContent = '거래처명을 입력하면 방문/보고 이력을 모두 찾아드려요.';
@@ -533,7 +519,11 @@
     const pills = (r.clients||[]).map(c =>
       `<span class="pill" data-client="${escapeHtml(c)}">${escapeHtml(c)}</span>`
     ).join('');
+    const backBtn = returnQuery
+      ? `<button class="back-btn" id="backToSearchBtn">← “${escapeHtml(returnQuery)}” 검색 결과로</button>`
+      : '';
     mainPanel.innerHTML = `
+      ${backBtn}
       <div class="report-head">
         <h2>${fmtLabel(r.date)}<span class="weekday">${fmtWeekday(r.date)}요일</span></h2>
         ${r.permalink ? `<a class="permalink" href="${r.permalink}" target="_blank" rel="noopener">Slack 원본 보기 ↗</a>` : ''}
@@ -548,6 +538,18 @@
         onSearchInput(c);
       });
     });
+    const backBtnEl = document.getElementById('backToSearchBtn');
+    if(backBtnEl){
+      backBtnEl.addEventListener('click', () => {
+        const q = returnQuery;
+        searchQuery = q;
+        searchInput.value = q;
+        clearBtn.style.display = 'block';
+        searchHint.textContent = `달력에서 초록 테두리로 표시된 날짜에도 결과가 있어요.`;
+        renderCalendar();
+        renderResults(q);
+      });
+    }
   }
 
   function renderEmpty(){
@@ -612,6 +614,7 @@
         const parts = d.split('-').map(Number);
         viewYear = parts[0]; viewMonth = parts[1]-1;
         selectedDate = d;
+        returnQuery = q;
         searchQuery = '';
         searchInput.value = '';
         clearBtn.style.display = 'none';
@@ -653,7 +656,6 @@
     renderCalendar();
   });
 
-  renderStats();
   renderCalendar();
   renderEmpty();
 </script>
